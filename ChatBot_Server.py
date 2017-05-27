@@ -94,6 +94,7 @@ class mapMachine(Machine):
             **machine_configs
         )
         self.curr_map = None
+        self.hasevent = True
 
     def is_going_roomroute(self,update):
         return update.message.text == "go!"
@@ -115,6 +116,7 @@ class mapMachine(Machine):
         '''
         if map_room_node.route.get(update.message.text)!=None:
             return self.curr_map.hasroad(map_room_node.route[update.message.text])
+        update.message.reply_text(text="抱歉，那裡沒有路")
         return False
         
 
@@ -126,6 +128,8 @@ class mapMachine(Machine):
 
     def on_enter_town(self,update):
         print('I at town')
+        reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
+        update.message.reply_text(text="你正在城鎮\n想出發去地下城嗎?",reply_markup=reply_markup)
 
     def on_enter_roomroute(self,update):
         print('I at roomroute')
@@ -138,11 +142,18 @@ class mapMachine(Machine):
 
     def on_exit_roomroute(self,update):
         print('I choose '+update.message.text)
+        self.hasevent = self.curr_map.chooseroad(map_room_node.route[update.message.text])
+        self.curr_map = getattr(self.curr_map,map_room_node.route[update.message.text])
         
-        
-
     def on_enter_roomevent(self,update):
         print('I at roomevent')
+        if self.hasevent:
+            # appear event
+            reply_markup = telegram.ReplyKeyboardMarkup([['handle!'],['handle!']])
+            update.message.reply_text(text="你遇到了些事情\n請選擇",reply_markup=reply_markup)
+        else:
+            self.noevent(update)
+        
 
 mapmachine = mapMachine(
     states=[
@@ -178,6 +189,11 @@ mapmachine = mapMachine(
             'source' : 'roomevent',
             'dest' : 'roomroute',
             'conditions' : 'is_handle_roomevent'
+        },
+        {
+            'trigger' : 'noevent',
+            'source' : 'roomevent',
+            'dest' : 'roomroute',
         },
         {
             'trigger' : 'handle',
@@ -224,6 +240,24 @@ class map_room_node():
 
     def hasroad(self,road):
         return hasattr(self,road)
+
+    def chooseroad(self,road):
+        if not hasattr(self,road):
+            return False
+        if getattr(self,road) == None:
+            if road == 'middle':
+                self.middle = map_room_node(prev_room_node=self)
+            if road == 'left':
+                self.left = map_room_node(prev_room_node=self)
+            if road == 'right':
+                self.right = map_room_node(prev_room_node=self)
+            if road == 'back':
+                self.back = map_room_node(prev_room_node=self)
+            return True
+        else:
+            return False
+            
+            
 
     def __str__(self):
         return "來到了"+str(self.style)+"號道路\n謹慎選擇吧!"

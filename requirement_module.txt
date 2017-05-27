@@ -1,0 +1,4 @@
+tornado
+transitions
+python-telegram-bot
+pygraphviz

@@ -1,5 +1,6 @@
 import sys
 from io import BytesIO
+import random
 import tornado.ioloop
 import tornado.web
 import transitions
@@ -56,7 +57,7 @@ class controlMachine(Machine):
         update.message.reply_text(text=update.message.text)
         self.back(update)
         global mapmachine
-        mapmachine.handle(update.message.text)
+        mapmachine.handle(update)
         
         
 
@@ -92,26 +93,55 @@ class mapMachine(Machine):
             model = self,
             **machine_configs
         )
+        self.curr_map = None
 
-    def is_going_roomroute(self,action):
-        return action == "go!"
+    def is_going_roomroute(self,update):
+        return update.message.text == "go!"
 
-    def is_choose_roomroute(self,action):
-        return action == "choose!"
+    def is_choose_roomroute(self,update):
+        '''
+        if action == "前進":
+            action = 'middle'
+            return self.curr_map.hasroad(action)
+        if action == "左轉":
+            action = 'left'
+            return self.curr_map.hasroad(action)
+        if action == "右轉":
+            action = 'right'
+            return self.curr_map.hasroad(action)
+        if action == "後退":
+            action = 'back'
+            return self.curr_map.hasroad(action)
+        '''
+        if map_room_node.route.get(update.message.text)!=None:
+            return self.curr_map.hasroad(map_room_node.route[update.message.text])
+        return False
+        
 
-    def is_handle_roomevent(self,action):
-        return action == "handle!"
+    def is_handle_roomevent(self,update):
+        return update.message.text == "handle!"
 
-    def is_back_town(self,action):
-        return action == "back!"
+    def is_back_town(self,update):
+        return update.message.text == "back!"
 
-    def on_enter_town(self,action):
+    def on_enter_town(self,update):
         print('I at town')
 
-    def on_enter_roomroute(self,action):
+    def on_enter_roomroute(self,update):
         print('I at roomroute')
+        # first enter
+        if self.curr_map == None:
+            self.curr_map = map_room_node(7)
+        # show keyboard and text
+        reply_markup = telegram.ReplyKeyboardMarkup(self.curr_map.keyboard)
+        update.message.reply_text(reply_markup=reply_markup,text=self.curr_map.__str__())
 
-    def on_enter_roomevent(self,action):
+    def on_exit_roomroute(self,update):
+        print('I choose '+update.message.text)
+        
+        
+
+    def on_enter_roomevent(self,update):
         print('I at roomevent')
 
 mapmachine = mapMachine(
@@ -164,6 +194,41 @@ mapmachine = mapMachine(
     ],
     initial='town',
 )
+
+# map tree struct
+
+class map_room_node():
+    route = {"前進":'middle',"右轉":'right',"左轉":'left',"後退":'back'}
+    
+    def __init__(self,roomstyle = -1,prev_room_node = None):
+        if roomstyle == -1:
+            roomstyle = random.randint(1,7)
+        self.style = roomstyle
+        self.keyboard = []
+        keyboard_middle = []
+        if roomstyle % 2 == 1:
+            self.right = None
+            keyboard_middle.append("右轉")
+        roomstyle //= 2
+        if roomstyle % 2 == 1:
+            self.middle = None
+            self.keyboard.append(["前進"])
+        roomstyle //= 2
+        if roomstyle % 2 == 1:
+            self.left = None
+            keyboard_middle.append("左轉")
+        self.keyboard.append(keyboard_middle)
+        if prev_room_node != None:
+            self.back = prev_room_node
+            self.keyboard.append(["後退"])
+
+    def hasroad(self,road):
+        return hasattr(self,road)
+
+    def __str__(self):
+        return "來到了"+str(self.style)+"號道路\n謹慎選擇吧!"
+
+    
 
 
 API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'

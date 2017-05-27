@@ -52,9 +52,12 @@ class controlMachine(Machine):
         self.back(update)
 
     def on_enter_echo(self,update):
-        print('[control] echo message')
+        print('[control] echo message and handle map')
         update.message.reply_text(text=update.message.text)
         self.back(update)
+        global mapmachine
+        mapmachine.handle(update.message.text)
+        
         
 
 controlmachine = controlMachine(
@@ -81,6 +84,85 @@ controlmachine = controlMachine(
         }
     ],
     initial='wait',
+)
+
+class mapMachine(Machine):
+    def __init__(self,**machine_configs):
+        self.machine = Machine(
+            model = self,
+            **machine_configs
+        )
+
+    def is_going_roomroute(self,action):
+        return action == "go!"
+
+    def is_choose_roomroute(self,action):
+        return action == "choose!"
+
+    def is_handle_roomevent(self,action):
+        return action == "handle!"
+
+    def is_back_town(self,action):
+        return action == "back!"
+
+    def on_enter_town(self,action):
+        print('I at town')
+
+    def on_enter_roomroute(self,action):
+        print('I at roomroute')
+
+    def on_enter_roomevent(self,action):
+        print('I at roomevent')
+
+mapmachine = mapMachine(
+    states=[
+        'town','roomroute','roomevent'
+    ],
+    transitions=[
+        {
+            'trigger' : 'handle',
+            'source' : 'town',
+            'dest' : 'roomroute',
+            'conditions' : 'is_going_roomroute'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'town',
+            'dest' : 'town',
+            'unless' : ['is_going_roomroute','is_back_town']
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'roomroute',
+            'dest' : 'roomevent',
+            'conditions' : 'is_choose_roomroute'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'roomroute',
+            'dest' : 'roomroute',
+            'unless' : ['is_choose_roomroute','is_back_town']
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'roomevent',
+            'dest' : 'roomroute',
+            'conditions' : 'is_handle_roomevent'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'roomevent',
+            'dest' : 'roomevent',
+            'unless' : ['is_handle_roomevent','is_back_town']
+        },
+        {
+            'trigger' : 'handle',
+            'source' : ['roomevent','roomroute'],
+            'dest' : 'town',
+            'conditions' : 'is_back_town'
+        }
+    ],
+    initial='town',
 )
 
 
@@ -124,6 +206,7 @@ class ShowHandler(tornado.web.RequestHandler):
 
         
 if __name__ == '__main__': 
+    global bot
     bot = telegram.Bot(token=API_token)
     if not bot:
         sys.exit(1)

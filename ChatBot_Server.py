@@ -19,7 +19,7 @@ class controlMachine(Machine):
             model = self,
             **machine_configs
         )
-        self.help_str = "底下是能接受的指令\n/start\n/about\n/menu\n/help"
+        self.help_str = "歡迎來到 " + game_setting['名字'] +"\n各種指令\n/start 開始遊戲\n/about 關於遊戲\n/menu 遊戲選單\n/help 幫助"
         #self.start_game = False
 
     def is_take_command(self,update):

@@ -8,13 +8,19 @@ import telegram
 #from transitions.extensions import GraphMachine
 from transitions import Machine
 
+game_setting = {
+    '名字':'無限地城',
+    '關於':'這是一個在 telegram 上，探索未知地下城的遊戲\n玩法輕鬆簡單\n動動手指就能開始玩'
+    }
+
 class controlMachine(Machine):
     def __init__(self,**machine_configs):
         self.machine = Machine(
             model = self,
             **machine_configs
         )
-        self.help_str = "底下是我能接受的指令\n/start\n/photo\n/keyboard\n/help"
+        self.help_str = "底下是能接受的指令\n/start\n/about\n/menu\n/help"
+        #self.start_game = False
 
     def is_take_command(self,update):
         if (update.message.text[0] == '/'):
@@ -22,6 +28,17 @@ class controlMachine(Machine):
             return True
         else:
             return False
+
+    def is_take_startmenu_command(self,update):
+        if update.message.text == "開始冒險":
+            global mapmachine
+            mapmachine.handle(update)
+            return True
+        if update.message.text == "關於遊戲":
+            update.message.reply_text(text=game_setting['關於'])
+            return False
+        update.message.reply_text(text="抱歉，這不是合理的操作")
+        return False
     
 
     def on_enter_wait(self,update):
@@ -29,26 +46,61 @@ class controlMachine(Machine):
 
     def on_enter_command(self,update):
         print('[control] handle ',update.message.text)
+        global mapmachine
         if update.message.text.strip() == 'start':
-            update.message.reply_text(text="指揮官您好，有什麼可以為你服務嗎?")
+            if users_gamemachine.get(update.message.chat.id)==None:
+                text = update.message.chat.first_name + update.message.chat.last_name + " 玩家您好，歡迎來到 [" + game_setting['名字'] + "]"
+                #keyboard = [['開始冒險'],['關於遊戲']]
+                #reply_markup = telegram.ReplyKeyboardMarkup(keyboard)
+                update.message.reply_text(text=text)
+                #self.go_startmenu(update)
+                # create user transitions
+                users_gamemachine[update.message.chat.id] = gameMachine()
+                users_gamemachine[update.message.chat.id].handle(update)
+            else:
+                text = update.message.chat.first_name + update.message.chat.last_name + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
+                update.message.reply_text(text=text)
             self.back(update)
             return
-        if update.message.text == 'photo':
+        if update.message.text.strip() == 'about':
+            update.message.reply_text(text=game_setting['關於'])
+            self.back(update)
+            return
+        if update.message.text.strip() == 'photo':
             update.message.reply_photo(photo='http://newsimg.5054399.com/uploads/userup/1705/1619192I627.jpg')
             self.back(update)
             return
-        if update.message.text == 'keyboard':
-            keyboard = [['/start'],['/photo'],['/keyboard'],['/help']]
+        if update.message.text.strip() == 'menu':
+            # TODO
+            keyboard = [['/start'],['/go_town'],['/help'],['/exitmenu']]
             reply_markup = telegram.ReplyKeyboardMarkup(keyboard)
             update.message.reply_text(reply_markup=reply_markup,text="這是選單")
             self.back(update)
             return
-        if update.message.text == 'help':
+        if update.message.text.strip() == 'help':
             update.message.reply_text(text=self.help_str)
             self.back(update)
             return
+        if update.message.text == 'exitmenu':
+            if mapmachine.state == 'town':
+                mapmachine.to_town(update)
+            if mapmachine.state == 'roomroute':
+                mapmachine.to_roomroute(update)
+            if mapmachine.state == 'roomevent':
+                mapmachine.to_roomevent(update)
+            #print(Machine.get_state(self=mapmachine,state=mapmachine.state))
+            self.back(update)
+            return
+        if update.message.text == 'go_town':
+            if mapmachine.state != 'town':
+                update.message.reply_text(text="正在離開地下城")
+            else:
+                update.message.reply_text(text="已經在城鎮")
+            mapmachine.to_town(update)
+            self.back(update)
+            return
         #default
-        text = "抱歉，我看不懂這個命令\n" + self.help_str
+        text = "抱歉，無法辨識這個命令\n" + self.help_str
         update.message.reply_text(text=text)
         self.back(update)
 
@@ -56,9 +108,15 @@ class controlMachine(Machine):
         print('[control] echo message and handle map')
         update.message.reply_text(text=update.message.text)
         self.back(update)
-        global mapmachine
-        mapmachine.handle(update)
-        
+        #global mapmachine
+        #mapmachine.handle(update)
+        if users_gamemachine.get(update.message.chat.id)==None:
+            update.message.reply_text(text="請使用 /start 開始進行冒險")
+        else:
+            users_gamemachine[update.message.chat.id].handle(update)
+
+    def on_enter_startmenu(self,update):
+        return 
         
 
 controlmachine = controlMachine(
@@ -87,79 +145,10 @@ controlmachine = controlMachine(
     initial='wait',
 )
 
-class mapMachine(Machine):
-    def __init__(self,**machine_configs):
-        self.machine = Machine(
-            model = self,
-            **machine_configs
-        )
-        self.curr_map = None
-        self.hasevent = True
-
-    def is_going_roomroute(self,update):
-        return update.message.text == "go!"
-
-    def is_choose_roomroute(self,update):
-        '''
-        if action == "前進":
-            action = 'middle'
-            return self.curr_map.hasroad(action)
-        if action == "左轉":
-            action = 'left'
-            return self.curr_map.hasroad(action)
-        if action == "右轉":
-            action = 'right'
-            return self.curr_map.hasroad(action)
-        if action == "後退":
-            action = 'back'
-            return self.curr_map.hasroad(action)
-        '''
-        if map_room_node.route.get(update.message.text)!=None:
-            return self.curr_map.hasroad(map_room_node.route[update.message.text])
-        update.message.reply_text(text="抱歉，那裡沒有路")
-        return False
-        
-
-    def is_handle_roomevent(self,update):
-        return update.message.text == "handle!"
-
-    def is_back_town(self,update):
-        return update.message.text == "back!"
-
-    def on_enter_town(self,update):
-        print('I at town')
-        reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
-        update.message.reply_text(text="你正在城鎮\n想出發去地下城嗎?",reply_markup=reply_markup)
-
-    def on_enter_roomroute(self,update):
-        print('I at roomroute')
-        # first enter
-        if self.curr_map == None:
-            self.curr_map = map_room_node(7)
-        # show keyboard and text
-        reply_markup = telegram.ReplyKeyboardMarkup(self.curr_map.keyboard)
-        update.message.reply_text(reply_markup=reply_markup,text=self.curr_map.__str__())
-
-    def on_exit_roomroute(self,update):
-        print('I choose '+update.message.text)
-        self.hasevent = self.curr_map.chooseroad(map_room_node.route[update.message.text])
-        self.curr_map = getattr(self.curr_map,map_room_node.route[update.message.text])
-        
-    def on_enter_roomevent(self,update):
-        print('I at roomevent')
-        if self.hasevent:
-            # appear event
-            reply_markup = telegram.ReplyKeyboardMarkup([['handle!'],['handle!']])
-            update.message.reply_text(text="你遇到了些事情\n請選擇",reply_markup=reply_markup)
-        else:
-            self.noevent(update)
-        
-
-mapmachine = mapMachine(
-    states=[
-        'town','roomroute','roomevent'
-    ],
-    transitions=[
+class gameMachine(Machine):
+    def __init__(self):
+        states=['town','roomroute','roomevent']
+        transitions=[
         {
             'trigger' : 'handle',
             'source' : 'town',
@@ -170,7 +159,7 @@ mapmachine = mapMachine(
             'trigger' : 'handle',
             'source' : 'town',
             'dest' : 'town',
-            'unless' : ['is_going_roomroute','is_back_town']
+            'unless' : 'is_going_roomroute'
         },
         {
             'trigger' : 'handle',
@@ -207,9 +196,96 @@ mapmachine = mapMachine(
             'dest' : 'town',
             'conditions' : 'is_back_town'
         }
-    ],
-    initial='town',
-)
+        ]
+        self.machine = Machine(
+            model = self,
+            states = states,
+            transitions = transitions,
+            initial=states[0]
+        )
+        self.curr_map = None
+        self.hasevent = True
+        self.haschoose = True
+
+    def is_going_roomroute(self,update):
+        return update.message.text == "go!"
+
+    def is_choose_roomroute(self,update):
+        '''
+        if action == "前進":
+            action = 'middle'
+            return self.curr_map.hasroad(action)
+        if action == "左轉":
+            action = 'left'
+            return self.curr_map.hasroad(action)
+        if action == "右轉":
+            action = 'right'
+            return self.curr_map.hasroad(action)
+        if action == "後退":
+            action = 'back'
+            return self.curr_map.hasroad(action)
+        '''
+        if map_room_node.route.get(update.message.text)!=None:
+            if self.curr_map.hasroad(map_room_node.route[update.message.text]):
+                print('I choose '+update.message.text)
+                self.hasevent = self.curr_map.chooseroad(map_room_node.route[update.message.text])
+                self.curr_map = getattr(self.curr_map,map_room_node.route[update.message.text])
+                global map_room_node_list
+                map_room_node_list.append(self.curr_map)
+                self.haschoose = True
+                return self.haschoose
+        #update.message.reply_text(text="抱歉，那裡沒有路")
+        self.haschoose = False
+        return self.haschoose
+        
+
+
+    def is_handle_roomevent(self,update):
+        return update.message.text == "handle!"
+
+    def is_back_town(self,update):
+        print('judge back!')
+        
+        if update.message.text == "back!":
+            self.haschoose = True
+            return self.haschoose
+        
+        return False
+
+    def on_enter_town(self,update):
+        print('I at town')
+        self.curr_map = None
+        reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
+        update.message.reply_text(text="你正在城鎮\n想做些什麼呢?",reply_markup=reply_markup)
+
+    def on_enter_roomroute(self,update):
+        print('I at roomroute')
+        # first enter
+        if self.curr_map == None:
+            global map_room_node_list
+            self.curr_map = map_room_node_list[random.randint(0,len(map_room_node_list)-1)]
+        # show keyboard and text
+        reply_markup = telegram.ReplyKeyboardMarkup(self.curr_map.keyboard)
+        update.message.reply_text(reply_markup=reply_markup,text=self.curr_map.__str__())
+        self.haschoose = True
+
+    def on_exit_roomroute(self,update):
+        if not self.haschoose:
+            update.message.reply_text(text="抱歉，那裡沒有路")
+        
+    def on_enter_roomevent(self,update):
+        print('I at roomevent')
+        if self.hasevent:
+            # appear event
+            reply_markup = telegram.ReplyKeyboardMarkup([['handle!'],['handle!']])
+            update.message.reply_text(text="你遇到了些事情\n請選擇",reply_markup=reply_markup)
+        else:
+            self.noevent(update)
+
+users_gamemachine = {}
+map_room_node_list = []
+
+mapmachine = gameMachine()
 
 # map tree struct
 
@@ -262,11 +338,12 @@ class map_room_node():
     def __str__(self):
         return "來到了"+str(self.style)+"號道路\n謹慎選擇吧!"
 
-    
+
+map_room_node_list.append(map_room_node(7))
 
 
 API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
-Webhook_URL = 'https://911ffcb4.ngrok.io'
+Webhook_URL = 'https://513f9bed.ngrok.io'
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):

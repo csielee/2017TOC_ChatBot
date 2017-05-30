@@ -46,7 +46,8 @@ class controlMachine(Machine):
 
     def on_enter_command(self,update):
         print('[control] handle ',update.message.text)
-        global mapmachine
+        #global mapmachine
+        global users_gamemachine
         if update.message.text.strip() == 'start':
             if users_gamemachine.get(update.message.chat.id)==None:
                 text = update.message.chat.first_name + update.message.chat.last_name + " 玩家您好，歡迎來到 [" + game_setting['名字'] + "]"
@@ -54,6 +55,7 @@ class controlMachine(Machine):
                 #reply_markup = telegram.ReplyKeyboardMarkup(keyboard)
                 update.message.reply_text(text=text)
                 #self.go_startmenu(update)
+                print('[control] create')
                 # create user transitions
                 users_gamemachine[update.message.chat.id] = gameMachine()
                 users_gamemachine[update.message.chat.id].handle(update)
@@ -72,31 +74,18 @@ class controlMachine(Machine):
             return
         if update.message.text.strip() == 'menu':
             # TODO
-            keyboard = [['/start'],['/go_town'],['/help'],['/exitmenu']]
-            reply_markup = telegram.ReplyKeyboardMarkup(keyboard)
-            update.message.reply_text(reply_markup=reply_markup,text="這是選單")
+            if users_gamemachine.get(update.message.chat.id)==None:
+                update.message.reply_text(text="抱歉，無法開啟選單\n因為你還沒開始遊戲 /start")
+            else:
+                if users_gamemachine[update.message.chat.id].state!='menu':
+                    users_gamemachine[update.message.chat.id].openmenu(update)
+                else:
+                    update.message.reply_text(text="你已經開啟選單")
+                    users_gamemachine[update.message.chat.id].to_menu(update)
             self.back(update)
             return
         if update.message.text.strip() == 'help':
             update.message.reply_text(text=self.help_str)
-            self.back(update)
-            return
-        if update.message.text == 'exitmenu':
-            if mapmachine.state == 'town':
-                mapmachine.to_town(update)
-            if mapmachine.state == 'roomroute':
-                mapmachine.to_roomroute(update)
-            if mapmachine.state == 'roomevent':
-                mapmachine.to_roomevent(update)
-            #print(Machine.get_state(self=mapmachine,state=mapmachine.state))
-            self.back(update)
-            return
-        if update.message.text == 'go_town':
-            if mapmachine.state != 'town':
-                update.message.reply_text(text="正在離開地下城")
-            else:
-                update.message.reply_text(text="已經在城鎮")
-            mapmachine.to_town(update)
             self.back(update)
             return
         #default
@@ -115,8 +104,6 @@ class controlMachine(Machine):
         else:
             users_gamemachine[update.message.chat.id].handle(update)
 
-    def on_enter_startmenu(self,update):
-        return 
         
 
 controlmachine = controlMachine(
@@ -147,7 +134,7 @@ controlmachine = controlMachine(
 
 class gameMachine(Machine):
     def __init__(self):
-        states=['town','roomroute','roomevent']
+        states=['town','roomroute','roomevent','menu','menu_command']
         transitions=[
         {
             'trigger' : 'handle',
@@ -195,36 +182,64 @@ class gameMachine(Machine):
             'source' : ['roomevent','roomroute'],
             'dest' : 'town',
             'conditions' : 'is_back_town'
+        },
+        {
+            'trigger' : 'openmenu',
+            'source' : ['town','roomroute','roomevent'],
+            'dest' : 'menu'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'menu',
+            'dest' : 'menu_command',
+            'conditions' : 'is_handle_menu_command'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'menu',
+            'dest' : 'menu',
+            'unless' : 'is_handle_menu_command'
+        },
+        {
+            'trigger' : 'leavemenu',
+            'source' : 'menu_command',
+            'dest' : 'town',
+            'conditions' : 'open_in_town'
+        },
+        {
+            'trigger' : 'leavemenu',
+            'source' : 'menu_command',
+            'dest' : 'roomroute',
+            'conditions' : 'open_in_roomroute'
+        },
+        {
+            'trigger' : 'leavemenu',
+            'source' : 'menu_command',
+            'dest' : 'roomevent',
+            'conditions' : 'open_in_roomevent'
         }
         ]
         self.machine = Machine(
             model = self,
             states = states,
             transitions = transitions,
-            initial=states[0]
+            initial=states[0],
+            before_state_change = 'save_last_state',
         )
         self.curr_map = None
         self.hasevent = True
         self.haschoose = True
+        self.laststate = 'town'
+        self.menukeyboard = [['玩家資訊'],['退出選單']]
+
+    def save_last_state(self,update):
+        if self.state!='menu':
+            self.laststate = self.state
 
     def is_going_roomroute(self,update):
         return update.message.text == "go!"
 
     def is_choose_roomroute(self,update):
-        '''
-        if action == "前進":
-            action = 'middle'
-            return self.curr_map.hasroad(action)
-        if action == "左轉":
-            action = 'left'
-            return self.curr_map.hasroad(action)
-        if action == "右轉":
-            action = 'right'
-            return self.curr_map.hasroad(action)
-        if action == "後退":
-            action = 'back'
-            return self.curr_map.hasroad(action)
-        '''
         if map_room_node.route.get(update.message.text)!=None:
             if self.curr_map.hasroad(map_room_node.route[update.message.text]):
                 print('I choose '+update.message.text)
@@ -239,27 +254,26 @@ class gameMachine(Machine):
         return self.haschoose
         
 
-
     def is_handle_roomevent(self,update):
         return update.message.text == "handle!"
 
     def is_back_town(self,update):
-        print('judge back!')
-        
+        print('judge back!')      
         if update.message.text == "back!":
             self.haschoose = True
             return self.haschoose
-        
-        return False
+        return False     
 
     def on_enter_town(self,update):
         print('I at town')
+        self.menukeyboard = [['玩家資訊'],['退出選單']]
         self.curr_map = None
         reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
         update.message.reply_text(text="你正在城鎮\n想做些什麼呢?",reply_markup=reply_markup)
 
     def on_enter_roomroute(self,update):
         print('I at roomroute')
+        self.menukeyboard = [['玩家資訊'],['離開地下城'],['退出選單']]
         # first enter
         if self.curr_map == None:
             global map_room_node_list
@@ -270,6 +284,7 @@ class gameMachine(Machine):
         self.haschoose = True
 
     def on_exit_roomroute(self,update):
+        #self.laststate = ''
         if not self.haschoose:
             update.message.reply_text(text="抱歉，那裡沒有路")
         
@@ -282,10 +297,42 @@ class gameMachine(Machine):
         else:
             self.noevent(update)
 
+    def on_enter_menu(self,update):
+        print('[menu]open menu')
+        reply_markup = telegram.ReplyKeyboardMarkup(self.menukeyboard)
+        update.message.reply_text(reply_markup=reply_markup,text="選單開啟")
+
+    def is_handle_menu_command(self,update):
+        print('[menu]detect '+update.message.text)
+        for elem in self.menukeyboard:
+            if update.message.text in elem:
+                return True
+        return False
+
+    def on_enter_menu_command(self,update):
+        print('[menu]handle '+update.message.text)
+        if update.message.text == '離開地下城':
+            self.to_town(update)
+            return   
+        if update.message.text == '玩家資訊':
+            update.message.reply_text(text = "還在實作中")
+            
+        self.leavemenu(update)
+        
+
+    def open_in_town(self,update):
+        return self.laststate == 'town'
+
+    def open_in_roomroute(self,update):
+        return self.laststate == 'roomroute'
+
+    def open_in_roomevent(self,update):
+        return self.laststate == 'roomevent'
+
 users_gamemachine = {}
 map_room_node_list = []
 
-mapmachine = gameMachine()
+#mapmachine = gameMachine()
 
 # map tree struct
 

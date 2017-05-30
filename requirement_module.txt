@@ -1,4 +1,6 @@
 tornado
 transitions
 python-telegram-bot
+requests
+python-firebase
 pygraphviz

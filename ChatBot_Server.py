@@ -7,6 +7,8 @@ import transitions
 import telegram
 #from transitions.extensions import GraphMachine
 from transitions import Machine
+from firebase import firebase
+firebase = firebase.FirebaseApplication('https://infinite-city.firebaseio.com',None)
 
 game_setting = {
     '名字':'無限地城',
@@ -59,6 +61,15 @@ class controlMachine(Machine):
                 # create user transitions
                 users_gamemachine[update.message.chat.id] = gameMachine()
                 users_gamemachine[update.message.chat.id].handle(update)
+                # get user data from firebase
+                global firebase
+                user_data = firebase.get('/',update.message.chat.id)
+                if user_data == None:
+                    #create player
+                    user_data = {'username' : update.message.chat.first_name + update.message.chat.last_name,'money':0}
+                    #update firebase
+                    firebase.put('/',update.message.chat.id,user_data)                
+                users_info[update.message.chat.id] = user_data
             else:
                 text = update.message.chat.first_name + update.message.chat.last_name + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
                 update.message.reply_text(text=text)
@@ -233,7 +244,7 @@ class gameMachine(Machine):
         self.menukeyboard = [['玩家資訊'],['退出選單']]
 
     def save_last_state(self,update):
-        if self.state!='menu':
+        if self.state!='menu' and self.state!='menu_command':
             self.laststate = self.state
 
     def is_going_roomroute(self,update):
@@ -315,7 +326,10 @@ class gameMachine(Machine):
             self.to_town(update)
             return   
         if update.message.text == '玩家資訊':
-            update.message.reply_text(text = "還在實作中")
+            text = '玩家名稱 : '+users_info[update.message.chat.id]['username'] + '\n擁有金錢 : '+str(users_info[update.message.chat.id]['money'])
+            update.message.reply_text(text = text)
+            self.to_menu(update)
+            return
             
         self.leavemenu(update)
         
@@ -332,7 +346,7 @@ class gameMachine(Machine):
 users_gamemachine = {}
 map_room_node_list = []
 
-#mapmachine = gameMachine()
+users_info = {}
 
 # map tree struct
 

@@ -4,6 +4,8 @@ coding by `李東霖`
 
 [hackmd](https://hackmd.io/s/rkp0EM5e-)
 
+![](https://i.imgur.com/59v7gnG.png)
+
 ## 使用工具與函式庫
 
 - telegram bot

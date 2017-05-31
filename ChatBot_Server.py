@@ -137,7 +137,7 @@ controlmachine = controlMachine(
 
 class gameMachine(Machine):
     def __init__(self):
-        states=['town','roomroute','roomevent','menu','menu_command']
+        states=['town','roomroute','roomevent','menu','menu_command','roomevent_handle']
         transitions=[
         {
             'trigger' : 'handle',
@@ -166,8 +166,13 @@ class gameMachine(Machine):
         {
             'trigger' : 'handle',
             'source' : 'roomevent',
-            'dest' : 'roomroute',
+            'dest' : 'roomevent_handle',
             'conditions' : 'is_handle_roomevent'
+        },
+        {
+            'trigger' : 'handle',
+            'source' : 'roomevent_handle',
+            'dest' : 'roomroute'
         },
         {
             'trigger' : 'noevent',
@@ -188,7 +193,7 @@ class gameMachine(Machine):
         },
         {
             'trigger' : 'openmenu',
-            'source' : ['town','roomroute','roomevent'],
+            'source' : ['town','roomroute','roomevent','roomevent_handle'],
             'dest' : 'menu'
         },
         {
@@ -220,6 +225,12 @@ class gameMachine(Machine):
             'source' : 'menu_command',
             'dest' : 'roomevent',
             'conditions' : 'open_in_roomevent'
+        },
+        {
+            'trigger' : 'leavemenu',
+            'source' : 'menu_command',
+            'dest' : 'roomevent_handle',
+            'conditions' : 'open_in_roomevent_handle'
         }
         ]
         self.machine = Machine(
@@ -234,13 +245,14 @@ class gameMachine(Machine):
         self.haschoose = True
         self.laststate = 'town'
         self.menukeyboard = [['玩家資訊'],['退出選單']]
+        self.eventtype = 0
 
     def save_last_state(self,update):
         if self.state!='menu' and self.state!='menu_command':
             self.laststate = self.state
 
     def is_going_roomroute(self,update):
-        return update.message.text == "go!"
+        return update.message.text == "出發去地下城"
 
     def is_choose_roomroute(self,update):
         if map_room_node.route.get(update.message.text)!=None:
@@ -251,6 +263,7 @@ class gameMachine(Machine):
                 global map_room_node_list
                 map_room_node_list.append(self.curr_map)
                 self.haschoose = True
+                self.eventtype = random.randint(1,3)
                 return self.haschoose
         #update.message.reply_text(text="抱歉，那裡沒有路")
         self.haschoose = False
@@ -258,7 +271,38 @@ class gameMachine(Machine):
         
 
     def is_handle_roomevent(self,update):
-        return update.message.text == "handle!"
+        if self.eventtype == 1:
+            #['不理他'],['陪他回城鎮'],['戳他']
+            if update.message.text == "不理他":
+                return True
+            elif update.message.text == "陪他回城鎮":
+                return True
+            elif update.message.text == "戳他":
+                return True
+            else:
+                return False
+        elif self.eventtype == 2:
+            #['用50元使出急凍光線'],['用20元使出水槍!'],['沒錢']
+            if update.message.text == "用50元使出急凍光線":
+                return True
+            elif update.message.text == "用20元使出水槍!":
+                return True
+            elif update.message.text == "沒錢":
+                return True
+            else:
+                return False
+        elif self.eventtype == 3:
+            #['用力開'],['輕輕開'],['不開']
+            if update.message.text == "用力開":
+                return True
+            elif update.message.text == "輕輕開":
+                return True
+            elif update.message.text == "不開":
+                return True
+            else:
+                return False
+        else:
+            return update.message.text == "handle!"
 
     def is_back_town(self,update):
         print('judge back!')      
@@ -271,7 +315,7 @@ class gameMachine(Machine):
         print('I at town')
         self.menukeyboard = [['玩家資訊'],['退出選單']]
         self.curr_map = None
-        reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
+        reply_markup = telegram.ReplyKeyboardMarkup([['出發去地下城']])
         update.message.reply_photo(photo='https://i.imgur.com/dvtgbZH.png')
         update.message.reply_text(text="你正在城鎮\n想做些什麼呢?",reply_markup=reply_markup)
 
@@ -297,10 +341,78 @@ class gameMachine(Machine):
         print('I at roomevent')
         if self.hasevent:
             # appear event
-            reply_markup = telegram.ReplyKeyboardMarkup([['handle!'],['handle!']])
-            update.message.reply_text(text="你遇到了些事情\n請選擇",reply_markup=reply_markup)
+            if self.eventtype == 1:
+                reply_markup = telegram.ReplyKeyboardMarkup([['不理他'],['陪他回城鎮'],['戳他']])
+                update.message.reply_photo(photo='https://i.imgur.com/74EwCsa.png')
+                update.message.reply_text(text="你在地城遇到了人\n你打算...",reply_markup=reply_markup)
+            elif self.eventtype == 2:
+                reply_markup = telegram.ReplyKeyboardMarkup([['用50元使出急凍光線'],['用20元使出水槍!'],['沒錢']])
+                update.message.reply_photo(photo='https://i.imgur.com/k2lvzpX.png')
+                update.message.reply_text(text="你在地城遇到了魔物\n突然發現旁邊有些秘笈，但似乎需要付出一些代價\n你打算...",reply_markup=reply_markup)
+            elif self.eventtype == 3:
+                reply_markup = telegram.ReplyKeyboardMarkup([['用力開'],['輕輕開'],['不開']])
+                update.message.reply_photo(photo='https://i.imgur.com/n7JeMIE.png')
+                update.message.reply_text(text="你在地城遇到了奇特的寶箱\n你打算...",reply_markup=reply_markup)
+            else:
+                reply_markup = telegram.ReplyKeyboardMarkup([['handle!'],['handle!']])
+                update.message.reply_text(text="你遇到了些事情\n請選擇",reply_markup=reply_markup)
         else:
             self.noevent(update)
+
+    def on_enter_roomevent_handle(self,update):
+        reply_markup = telegram.ReplyKeyboardMarkup([['OK!']])
+        update.message.reply_text(text="以下是事件的結果",reply_markup=reply_markup)
+        if self.eventtype == 1:
+            #['不理他'],['陪他回城鎮'],['戳他']
+            if update.message.text == "不理他":
+                get_money = random.randint(80,120)
+                text="天阿，因為你沒有理他\n發現他是魔物偽裝的\n打敗取得 "+str(get_money)+" 元!"
+                update.message.reply_text(text=text)
+                users_info[update.message.chat.id]['money'] += get_money          
+            elif update.message.text == "陪他回城鎮":
+                update.message.reply_text(text="被他當作是變態\n為了解釋，只好給他 50 元")
+                users_info[update.message.chat.id]['money'] -= 50  
+            elif update.message.text == "戳他":
+                update.message.reply_text(text="沒想到從衣服當中掉出 200 元\n因為不好意思拿，把錢還給他")
+        elif self.eventtype == 2:
+            #['用50元使出急凍光線'],['用20元使出水槍!'],['沒錢']
+            if update.message.text == "用50元使出急凍光線":
+                if users_info[update.message.chat.id]['money'] < 50:
+                    update.message.reply_text(text = "錢不夠發動秘笈\n但魔物自己跑掉了")
+                else:
+                    get_money = random.randint(30,49)
+                    text = "使出! 急凍光線\n效果十分顯著!\n突然發現逃跑的魔物掉了"+str(get_money)+"元"
+                    update.message.reply_text(text =text)
+                    users_info[update.message.chat.id]['money'] -= 50
+                    users_info[update.message.chat.id]['money'] += get_money 
+            elif update.message.text == "用20元使出水槍!":
+                if users_info[update.message.chat.id]['money'] < 20:
+                    update.message.reply_text(text = "錢不夠發動秘笈\n只好自己逃跑")
+                else:
+                    update.message.reply_text(text = "使出! 水槍\n效果十分 不 顯著!\n幸好魔物以為只是有蟲子咬他")
+                    users_info[update.message.chat.id]['money'] -= 20
+            elif update.message.text == "沒錢":
+                text = "魔物看你身上只有 " + str(users_info[update.message.chat.id]['money']) + "元\n從身上拿了 10 元給你就走了"
+                update.message.reply_text(text=text)
+                users_info[update.message.chat.id]['money'] += 10
+        elif self.eventtype == 3:
+            #['用力開'],['輕輕開'],['不開']
+            text = ""
+            get_money = 0
+            if update.message.text == "用力開":
+                get_money = random.randint(200,300)
+                text = "一個用力過猛，寶箱解體\n發現掉出 " + str(get_money) +" 元"
+            elif update.message.text == "輕輕開":
+                get_money = random.randint(50,100)
+                text = "輕輕開發現打不開\n但小縫隙掉出 " + str(get_money) +" 元"
+            elif update.message.text == "不開":
+                get_money = random.randint(10,20)
+                text = "雖然不敢開，但是發現旁邊有散落的金錢 " + str(get_money) +" 元"
+
+            update.message.reply_text(text=text)
+            users_info[update.message.chat.id]['money'] += get_money
+
+        firebase.put('/',update.message.chat.id,users_info[update.message.chat.id])
 
     def on_enter_menu(self,update):
         print('[menu]open menu')
@@ -336,6 +448,9 @@ class gameMachine(Machine):
 
     def open_in_roomevent(self,update):
         return self.laststate == 'roomevent'
+
+    def open_in_roomevent_handle(self,update):
+        return self.laststate == 'roomevent_handle'
 
 users_gamemachine = {}
 map_room_node_list = []

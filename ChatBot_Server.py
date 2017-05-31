@@ -568,8 +568,16 @@ class MainHandler(tornado.web.RequestHandler):
 class ShowHandler(tornado.web.RequestHandler):
     def get(self):
         try:
+            filename = ''
             self.set_header("Content-Type", "image/png")
-            self.write('');
+            reader = open(filename,'rb')
+            data = reader.read(1024)
+            while data:
+                self.write(data)
+                data = reader.read(1024)
+            reader.close()
+            self.finish()
+            return
         except Exception as error:
             print('error by [',error,']')
 

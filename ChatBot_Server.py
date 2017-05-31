@@ -8,6 +8,10 @@ import telegram
 #from transitions.extensions import GraphMachine
 from transitions import Machine
 from firebase import firebase
+import requests
+import re
+
+
 firebase = firebase.FirebaseApplication('https://infinite-city.firebaseio.com',None)
 
 game_setting = {
@@ -403,8 +407,20 @@ class map_room_node():
 map_room_node_list.append(map_room_node(7))
 
 
+def get_ngrok_https_url():
+    response = requests.get('http://127.0.0.1:4040')
+    if response.status_code != requests.codes.ok:
+        print('please open ngrok!')
+        sys.exit(1)
+    result = re.findall('{\\\\"URL\\\\":\\\\"https://.*.ngrok.io\\\\",\\\\"Proto\\\\":\\\\"https\\\\"',str(response.text))
+    result = re.findall(':\\\\".*[.]ngrok[.]io',result[0])
+    print('get : '+result[0][3:])
+    return result[0][3:]
+
+
 API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
-Webhook_URL = 'https://513f9bed.ngrok.io'
+#Webhook_URL = 'https://6d887d72.ngrok.io'
+Webhook_URL = get_ngrok_https_url()
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):

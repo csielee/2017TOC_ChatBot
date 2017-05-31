@@ -16,7 +16,8 @@ firebase = firebase.FirebaseApplication('https://infinite-city.firebaseio.com',N
 
 game_setting = {
     '名字':'無限地城',
-    '關於':'這是一個在 telegram 上，探索未知地下城的遊戲\n玩法輕鬆簡單\n動動手指就能開始玩'
+    '關於':'這是一個在 telegram 上，探索未知地下城的遊戲\n玩法輕鬆簡單\n動動手指就能開始玩',
+    '開頭圖片' : 'https://i.imgur.com/59v7gnG.png'
     }
 
 class controlMachine(Machine):
@@ -34,19 +35,7 @@ class controlMachine(Machine):
             return True
         else:
             return False
-
-    def is_take_startmenu_command(self,update):
-        if update.message.text == "開始冒險":
-            global mapmachine
-            mapmachine.handle(update)
-            return True
-        if update.message.text == "關於遊戲":
-            update.message.reply_text(text=game_setting['關於'])
-            return False
-        update.message.reply_text(text="抱歉，這不是合理的操作")
-        return False
     
-
     def on_enter_wait(self,update):
         print('[control] wait next command')
 
@@ -57,10 +46,8 @@ class controlMachine(Machine):
         if update.message.text.strip() == 'start':
             if users_gamemachine.get(update.message.chat.id)==None:
                 text = update.message.chat.first_name + update.message.chat.last_name + " 玩家您好，歡迎來到 [" + game_setting['名字'] + "]"
-                #keyboard = [['開始冒險'],['關於遊戲']]
-                #reply_markup = telegram.ReplyKeyboardMarkup(keyboard)
+                update.message.reply_photo(photo=game_setting['開頭圖片'])
                 update.message.reply_text(text=text)
-                #self.go_startmenu(update)
                 print('[control] create')
                 # create user transitions
                 users_gamemachine[update.message.chat.id] = gameMachine()
@@ -76,6 +63,7 @@ class controlMachine(Machine):
                 users_info[update.message.chat.id] = user_data
             else:
                 text = update.message.chat.first_name + update.message.chat.last_name + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
+                update.message.reply_photo(photo=game_setting['開頭圖片'])
                 update.message.reply_text(text=text)
             self.back(update)
             return
@@ -284,6 +272,7 @@ class gameMachine(Machine):
         self.menukeyboard = [['玩家資訊'],['退出選單']]
         self.curr_map = None
         reply_markup = telegram.ReplyKeyboardMarkup([['go!']])
+        update.message.reply_photo(photo='https://i.imgur.com/dvtgbZH.png')
         update.message.reply_text(text="你正在城鎮\n想做些什麼呢?",reply_markup=reply_markup)
 
     def on_enter_roomroute(self,update):
@@ -296,6 +285,7 @@ class gameMachine(Machine):
         # show keyboard and text
         reply_markup = telegram.ReplyKeyboardMarkup(self.curr_map.keyboard)
         update.message.reply_text(reply_markup=reply_markup,text=self.curr_map.__str__())
+        update.message.reply_photo(photo = map_room_node.photo[self.curr_map.style])
         self.haschoose = True
 
     def on_exit_roomroute(self,update):
@@ -356,6 +346,15 @@ users_info = {}
 
 class map_room_node():
     route = {"前進":'middle',"右轉":'right',"左轉":'left',"後退":'back'}
+    photo = {
+        1 : 'https://i.imgur.com/cDUTV1S.png',
+        2 : 'https://i.imgur.com/KD4F1yr.png',
+        3 : 'https://i.imgur.com/aWDrMl9.png',
+        4 : 'https://i.imgur.com/FsHFWdi.png',
+        5 : 'https://i.imgur.com/l9TAgon.png',
+        6 : 'https://i.imgur.com/7jW982q.png',
+        7 : 'https://i.imgur.com/tzRzrvO.png'
+        }
     
     def __init__(self,roomstyle = -1,prev_room_node = None):
         if roomstyle == -1:
@@ -374,6 +373,8 @@ class map_room_node():
         if roomstyle % 2 == 1:
             self.left = None
             keyboard_middle.append("左轉")
+    
+        keyboard_middle = keyboard_middle[::-1]
         self.keyboard.append(keyboard_middle)
         if prev_room_node != None:
             self.back = prev_room_node

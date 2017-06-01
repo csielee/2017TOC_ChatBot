@@ -35,7 +35,7 @@ coding by `李東霖`
 - windows
     - 可點擊 `Start_Server.bat`
 - linux
-    - 可點擊 `Start_Server.sh`
+    - 可執行 `$ sh Start_Server.sh`
 
 ### 開啟 server
 

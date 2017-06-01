@@ -87,6 +87,9 @@ bot 也會在回錯話時進行提醒
     - 可自由冒險，有7種房間
     - 隨機生成地下城
     - 在 server 開啟期間，所有走過地城會被記錄
+- 多人
+    - 可儲存玩家資料
+    - 能允許多人遊玩
 
 ## 運用 telegram bot
 
@@ -106,6 +109,8 @@ bot 也會在回錯話時進行提醒
     - echo 是將上述以外的輸入回傳並丟入遊戲引擎
     - 為所有使用者共用
 
+![](https://i.imgur.com/ynBTNs4.png)
+
 - 遊戲引擎操作
     - 每個使用者有各自的 transitions machine
     - 共有 6 個 state
@@ -115,6 +120,8 @@ bot 也會在回錯話時進行提醒
     - roomevent_handle 是使用者在處理遇到的事件
     - menu 是使用者開啟遊戲選單
     - menu_command 是使用者正在執行選單的功能
+
+![](https://i.imgur.com/2z0Dkjn.png)
 
 ## 多人遊玩
 

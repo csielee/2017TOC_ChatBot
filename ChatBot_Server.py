@@ -5,8 +5,14 @@ import tornado.ioloop
 import tornado.web
 import transitions
 import telegram
-#from transitions.extensions import GraphMachine
+# for has install pygraphviz
+from transitions.extensions import GraphMachine as Machine
+hasusegraph = True
+# for can not install pygraphviz
+'''
 from transitions import Machine
+hasusegraph = False
+'''
 from firebase import firebase
 import requests
 import re
@@ -52,6 +58,7 @@ class controlMachine(Machine):
                 # create user transitions
                 users_gamemachine[update.message.chat.id] = gameMachine()
                 users_gamemachine[update.message.chat.id].handle(update)
+                users_chatid.append(update.message.chat.id)
                 # get user data from firebase
                 global firebase
                 user_data = firebase.get('/',update.message.chat.id)
@@ -133,6 +140,8 @@ controlmachine = controlMachine(
         }
     ],
     initial='wait',
+    show_conditions=True,
+    title='遊戲命令操作'
 )
 
 class gameMachine(Machine):
@@ -239,6 +248,8 @@ class gameMachine(Machine):
             transitions = transitions,
             initial=states[0],
             before_state_change = 'save_last_state',
+            show_conditions=True,
+            title='遊戲引擎操作'
         )
         self.curr_map = None
         self.hasevent = True
@@ -453,6 +464,7 @@ class gameMachine(Machine):
         return self.laststate == 'roomevent_handle'
 
 users_gamemachine = {}
+users_chatid = []
 map_room_node_list = []
 
 users_info = {}
@@ -567,15 +579,35 @@ class MainHandler(tornado.web.RequestHandler):
 
 class ShowHandler(tornado.web.RequestHandler):
     def get(self):
+        id = self.get_argument(name='id',default='0')
+        print("get id = "+id)
+        id = int(id)
+        if id-1 >= len(users_chatid):
+            self.write('no this transition!')
+            return
         try:
-            filename = ''
             self.set_header("Content-Type", "image/png")
-            reader = open(filename,'rb')
-            data = reader.read(1024)
-            while data:
-                self.write(data)
+            if hasusegraph:
+                byte_io = BytesIO()
+                if id == None or id == 0:
+                    controlmachine.graph.draw(byte_io,prog='dot',format='png')
+                else:
+                    users_gamemachine[users_chatid[id-1]].graph.draw(byte_io,prog='dot',format='png')
+
+                byte_io.seek(0)
+                data = byte_io.read(1024)
+                while data != b'':
+                    self.write(data)
+                    data = byte_io.read(1024)
+                byte_io.close()                
+            else:
+                filename = ''
+                reader = open(filename,'rb')
                 data = reader.read(1024)
-            reader.close()
+                while data:
+                    self.write(data)
+                    data = reader.read(1024)
+                reader.close()
             self.finish()
             return
         except Exception as error:

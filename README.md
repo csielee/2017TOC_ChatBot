@@ -48,6 +48,10 @@ coding by `李東霖`
 如出現 `Webhook OK!` 代表成功開啟並設定
 可以開始跟 bot 對話
 
+## 如何找到我的 bot
+
+bot username : `@FoRtEsT_FoRtEsT_bot`
+
 ## 如何跟我的 bot 互動
 
 這是一個小遊戲

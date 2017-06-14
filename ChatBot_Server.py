@@ -656,5 +656,7 @@ if __name__ == '__main__':
         (r"/",MainHandler)
         #(r"/show",ShowHandler),
     ])
+    tornado.options.parse_command_line()
+    print('get port'+str(tornado.options.options.port))
     app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()

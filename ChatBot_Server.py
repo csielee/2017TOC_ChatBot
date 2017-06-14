@@ -562,7 +562,10 @@ def get_ngrok_https_url():
 
 API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
 #Webhook_URL = 'https://6d887d72.ngrok.io'
-Webhook_URL = get_ngrok_https_url()
+# local
+#Webhook_URL = get_ngrok_https_url()
+# use heroku
+Webhook_URL = "https://stormy-atoll-60260.herokuapp.com/"
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):

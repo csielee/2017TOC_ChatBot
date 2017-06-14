@@ -1,0 +1,7 @@
+{
+ "name": "Infinite city on telegram",
+ "description": "A chatbot on telegram,can play a game",
+ "image": "heroku/python",
+ "repository": "https://github.com/csielee/2017TOC_ChatBot",
+ "keywords": ["python","tornado","telegram-bot"]
+}

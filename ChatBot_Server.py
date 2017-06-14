@@ -106,19 +106,28 @@ class controlMachine(Machine):
     def on_enter_echo(self,update):
         print('[control] echo message and handle map')
         update.message.reply_text(text=update.message.text)
-        self.back(update)
         #global mapmachine
         #mapmachine.handle(update)
+        if 'hello' in update.message.text or '哈囉' in update.message.text:
+            self.sayhello(update)
+            return
+
         if users_gamemachine.get(update.message.chat.id)==None:
             update.message.reply_text(text="請使用 /start 開始進行冒險")
         else:
             users_gamemachine[update.message.chat.id].handle(update)
+        self.back(update)
 
+    def on_enter_hello(self,update):
+        print('[control]say hello')
+        reply_markup = telegram.ReplyKeyboardHide()
+        update.message.reply_text(text="你好！快樂玩遊戲吧",reply_markup=reply_markup)
+        self.back(update)
         
 
 controlmachine = controlMachine(
     states=[
-        'wait','command','echo'
+        'wait','command','echo','hello'
     ],
     transitions=[
         {
@@ -135,8 +144,13 @@ controlmachine = controlMachine(
         },
         {
             'trigger' : 'back',
-            'source' : ['command','echo'],
+            'source' : ['command','echo','hello'],
             'dest' : 'wait'
+        },
+        {
+            'trigger' : 'sayhello',
+            'source' : 'echo',
+            'dest' : 'hello'
         }
     ],
     initial='wait',

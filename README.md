@@ -28,7 +28,7 @@ coding by `李東霖`
 
 ### 先將必要的模組安裝起來
 
-`$ pip install -r requirement_module.txt`
+`$ pip install -r requirement.txt`
 
 ### 開啟 ngrok
 

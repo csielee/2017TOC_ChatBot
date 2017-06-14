@@ -1,1 +1,1 @@
-web: python ChatBot_Server.py 
+web: python ChatBot_Server.py --port=$PORT

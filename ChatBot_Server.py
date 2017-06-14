@@ -17,6 +17,8 @@ from firebase import firebase
 import requests
 import re
 
+from tornado.options import define
+define("port", default=5000, help="run on the given port", type=int)
 
 firebase = firebase.FirebaseApplication('https://infinite-city.firebaseio.com',None)
 
@@ -654,5 +656,5 @@ if __name__ == '__main__':
         (r"/",MainHandler)
         #(r"/show",ShowHandler),
     ])
-    app.listen(5000)
+    app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()

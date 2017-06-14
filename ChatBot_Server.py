@@ -6,13 +6,13 @@ import tornado.web
 import transitions
 import telegram
 # for has install pygraphviz
-from transitions.extensions import GraphMachine as Machine
-hasusegraph = True
+#from transitions.extensions import GraphMachine as Machine
+#hasusegraph = True
 # for can not install pygraphviz
-'''
+
 from transitions import Machine
 hasusegraph = False
-'''
+
 from firebase import firebase
 import requests
 import re
@@ -153,10 +153,20 @@ controlmachine = controlMachine(
             'dest' : 'hello'
         }
     ],
-    initial='wait',
+    initial='wait'
+)
+
+'''
+,
     show_conditions=True,
     title='遊戲命令操作'
-)
+'''
+
+'''
+,
+            show_conditions=True,
+            title='遊戲引擎操作'
+'''
 
 class gameMachine(Machine):
     def __init__(self):
@@ -261,9 +271,7 @@ class gameMachine(Machine):
             states = states,
             transitions = transitions,
             initial=states[0],
-            before_state_change = 'save_last_state',
-            show_conditions=True,
-            title='遊戲引擎操作'
+            before_state_change = 'save_last_state'
         )
         self.curr_map = None
         self.hasevent = True

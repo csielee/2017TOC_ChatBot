@@ -651,8 +651,8 @@ if __name__ == '__main__':
     else:
         print("Webhook OK!")
     app = tornado.web.Application([
-        (r"/",MainHandler),
-        (r"/show",ShowHandler),
+        (r"/",MainHandler)
+        #(r"/show",ShowHandler),
     ])
-    app.listen(8888)
+    app.listen(80)
     tornado.ioloop.IOLoop.current().start()

@@ -29,16 +29,16 @@ game_setting = {
     }
 
 def getname(update):
-    name = ""
-    if (hasattr(update.message.chat,'username')):
-        name += update.message.chat.username
+    string = ''
+    if (hasattr(update.message.chat,'username') and update.message.chat.username!=None):
+        string = update.message.chat.username
     else:
         if (hasattr(update.message.chat,'first_name')):
-            name += update.message.chat.first_name
+            string = str(string) + update.message.chat.first_name
         if (hasattr(update.message.chat,'last_name')):
-            name += update.message.chat.last_name
+            string = str(string) + update.message.chat.last_name
 
-    return name
+    return string
 
 class controlMachine(Machine):
     def __init__(self,**machine_configs):
@@ -80,7 +80,9 @@ class controlMachine(Machine):
                     #create player
                     user_data = {'username' : getname(update),'money':0}
                     #update firebase
-                    firebase.put('/',update.message.chat.id,user_data)                
+                    firebase.put('/',update.message.chat.id,user_data)
+                if (user_data['username'] != getname(update)):
+                    user_data['username'] = getname(update)                    
                 users_info[update.message.chat.id] = user_data
             else:
                 text = getname(update) + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
@@ -584,10 +586,9 @@ def get_ngrok_https_url():
 define("token", default='392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30', help="use for telegram bot",type=str)
 #API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
 #Webhook_URL = 'https://6d887d72.ngrok.io'
-# local
-#Webhook_URL = get_ngrok_https_url()
-# use heroku
-Webhook_URL = "https://stormy-atoll-60260.herokuapp.com/"
+
+
+define("server",default="local",help="choose run on local by ngrok or on heroku",type=str)
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -598,7 +599,8 @@ class MainHandler(tornado.web.RequestHandler):
             update_json = tornado.escape.json_decode(self.request.body)
             update = telegram.Update.de_json(tornado.escape.json_decode(self.request.body),bot)
             text = update.message.text
-            print(getname(update)+' : '+update_json['message']['text'])
+            name = getname(update)
+            print(str(name)+' : '+update_json['message']['text'])
             
             controlmachine.getcommand(update)
             #update_json = json.loads(self.request.body)
@@ -654,7 +656,13 @@ class ShowHandler(tornado.web.RequestHandler):
 
         
 if __name__ == '__main__':
-    tornado.options.parse_command_line() 
+    tornado.options.parse_command_line()
+    if (tornado.options.options.server == "local"):
+        # local
+        Webhook_URL = get_ngrok_https_url()
+    else:
+        # use heroku
+        Webhook_URL = "https://stormy-atoll-60260.herokuapp.com/" 
     global bot
     bot = telegram.Bot(token=tornado.options.options.token)
     if not bot:
@@ -669,6 +677,6 @@ if __name__ == '__main__':
         (r"/",MainHandler)
         #(r"/show",ShowHandler),
     ])
-    print('get port'+str(tornado.options.options.port))
+    print('use port : '+str(tornado.options.options.port))
     app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()

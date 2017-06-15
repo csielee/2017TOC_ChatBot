@@ -50,7 +50,7 @@ coding by `李東霖`
 
 ## 如何找到我的 bot
 
-bot username : `@FoRtEsT_FoRtEsT_bot`
+bot username : `@infinite_city_bot`
 
 ## 如何跟我的 bot 互動
 

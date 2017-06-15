@@ -28,6 +28,18 @@ game_setting = {
     '開頭圖片' : 'https://i.imgur.com/59v7gnG.png'
     }
 
+def getname(update):
+    name = ""
+    if (hasattr(update.message.chat,'username')):
+        name += update.message.chat.username
+    else:
+        if (hasattr(update.message.chat,'first_name')):
+            name += update.message.chat.first_name
+        if (hasattr(update.message.chat,'last_name')):
+            name += update.message.chat.last_name
+
+    return name
+
 class controlMachine(Machine):
     def __init__(self,**machine_configs):
         self.machine = Machine(
@@ -53,7 +65,7 @@ class controlMachine(Machine):
         global users_gamemachine
         if update.message.text.strip() == 'start':
             if users_gamemachine.get(update.message.chat.id)==None:
-                text = update.message.chat.first_name + update.message.chat.last_name + " 玩家您好，歡迎來到 [" + game_setting['名字'] + "]"
+                text = getname(update) + " 玩家您好，歡迎來到 [" + game_setting['名字'] + "]"
                 update.message.reply_photo(photo=game_setting['開頭圖片'])
                 update.message.reply_text(text=text)
                 print('[control] create')
@@ -66,12 +78,12 @@ class controlMachine(Machine):
                 user_data = firebase.get('/',update.message.chat.id)
                 if user_data == None:
                     #create player
-                    user_data = {'username' : update.message.chat.first_name + update.message.chat.last_name,'money':0}
+                    user_data = {'username' : getname(update),'money':0}
                     #update firebase
                     firebase.put('/',update.message.chat.id,user_data)                
                 users_info[update.message.chat.id] = user_data
             else:
-                text = update.message.chat.first_name + update.message.chat.last_name + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
+                text = getname(update) + " 玩家你已經在 [" + game_setting['名字'] + "]\n盡情冒險吧!"
                 update.message.reply_photo(photo=game_setting['開頭圖片'])
                 update.message.reply_text(text=text)
             self.back(update)
@@ -569,8 +581,8 @@ def get_ngrok_https_url():
     print('get : '+result[0][3:])
     return result[0][3:]
 
-
-API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
+define("token", default='392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30', help="use for telegram bot",type=str)
+#API_token = '392530414:AAEAbUyz7rybDFv14ig7NzEA53trQdNYq30'
 #Webhook_URL = 'https://6d887d72.ngrok.io'
 # local
 #Webhook_URL = get_ngrok_https_url()
@@ -586,7 +598,7 @@ class MainHandler(tornado.web.RequestHandler):
             update_json = tornado.escape.json_decode(self.request.body)
             update = telegram.Update.de_json(tornado.escape.json_decode(self.request.body),bot)
             text = update.message.text
-            print(update_json['message']['from']['first_name'].strip()+update_json['message']['from']['last_name'].strip()+' : '+update_json['message']['text'])
+            print(getname(update)+' : '+update_json['message']['text'])
             
             controlmachine.getcommand(update)
             #update_json = json.loads(self.request.body)
@@ -641,9 +653,10 @@ class ShowHandler(tornado.web.RequestHandler):
             print('error by [',error,']')
 
         
-if __name__ == '__main__': 
+if __name__ == '__main__':
+    tornado.options.parse_command_line() 
     global bot
-    bot = telegram.Bot(token=API_token)
+    bot = telegram.Bot(token=tornado.options.options.token)
     if not bot:
         sys.exit(1)
     print('Hello ,this bot is '+bot.get_me()['first_name']+' ,username : '+bot.get_me()['username'])
@@ -656,7 +669,6 @@ if __name__ == '__main__':
         (r"/",MainHandler)
         #(r"/show",ShowHandler),
     ])
-    tornado.options.parse_command_line()
     print('get port'+str(tornado.options.options.port))
     app.listen(tornado.options.options.port)
     tornado.ioloop.IOLoop.current().start()
